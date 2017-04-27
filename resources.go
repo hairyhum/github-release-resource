@@ -76,8 +76,9 @@ type OutResponse struct {
 }
 
 type Version struct {
-	Tag string `json:"tag,omitempty"`
-	ID  string `json:"id,omitempty"`
+	Tag    string `json:"tag,omitempty"`
+	ID     string `json:"id,omitempty"`
+	Regexp string `json:"regexp,omitempty"`
 }
 
 type MetadataPair struct {

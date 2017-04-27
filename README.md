@@ -71,6 +71,17 @@ To get a specific version of a release:
   version: { tag: 'v0.0.1' }
 ```
 
+To specify a regexp for a release tag:
+
+``` yaml
+- get: gh-release
+  version:
+    regexp: "my_version_(.*)_some_suffix"
+```
+
+The regexp should contain a single matching group, which should be a
+[semver](http://semver.org) resource version.
+
 ## Behavior
 
 ### `check`: Check for released versions.

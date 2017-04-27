@@ -87,16 +87,60 @@ var _ = Describe("In Command", func() {
 	}
 
 	Context("when there is a tagged release", func() {
-		Context("when a present version is specified", func() {
-			BeforeEach(func() {
+		BeforeEach(func() {
 				githubClient.GetReleaseByTagReturns(buildRelease(1, "v0.35.0", false), nil)
-
+				githubClient.ListReleasesReturns([]*github.RepositoryRelease {
+					buildRelease(2, "v0.35.0", false),
+					buildRelease(3, "v0.35.1", false),
+					buildRelease(1, "v0.34.2", false),
+				}, nil)
 				githubClient.ListReleaseAssetsReturns([]*github.ReleaseAsset{
 					buildAsset(0, "example.txt"),
 					buildAsset(1, "example.rtf"),
 					buildAsset(2, "example.wtf"),
 				}, nil)
+		})
+		Context("with a version regexp is specified", func() {
+			BeforeEach(func() {
+				inRequest.Version = &resource.Version{
+					Regexp: "v0.35.(.*)",
+				}
+			})
 
+			Context("when valid asset filename globs are given", func() {
+				BeforeEach(func() {
+					inRequest.Params = resource.InParams{
+						Globs: []string{"*.txt", "*.rtf"},
+					}
+				})
+
+				It("succeeds", func() {
+					inResponse, inErr = command.Run(destDir, inRequest)
+
+					Ω(inErr).ShouldNot(HaveOccurred())
+				})
+
+				It("returns the fetched version", func() {
+					inResponse, inErr = command.Run(destDir, inRequest)
+
+					Ω(inResponse.Version).Should(Equal(resource.Version{Tag: "v0.35.1"}))
+				})
+
+				It("has some sweet metadata", func() {
+					inResponse, inErr = command.Run(destDir, inRequest)
+
+					Ω(inResponse.Metadata).Should(ConsistOf(
+						resource.MetadataPair{Name: "url", Value: "http://google.com"},
+						resource.MetadataPair{Name: "name", Value: "release-name", URL: "http://google.com"},
+						resource.MetadataPair{Name: "body", Value: "*markdown*", Markdown: true},
+						resource.MetadataPair{Name: "tag", Value: "v0.35.1"},
+					))
+				})
+			})
+
+		})
+		Context("when a present version is specified", func() {
+			BeforeEach(func() {
 				inRequest.Version = &resource.Version{
 					Tag: "v0.35.0",
 				}

@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"regexp"
+
 	"github.com/google/go-github/github"
+	"github.com/cppforlife/go-semi-semantic/version"
 )
 
 type InCommand struct {
@@ -35,6 +38,27 @@ func (c *InCommand) Run(destDir string, request InRequest) (InResponse, error) {
 
 	if request.Version.Tag != "" {
 		foundRelease, err = c.github.GetReleaseByTag(request.Version.Tag)
+	} else if request.Version.Regexp != "" {
+		var releases []*github.RepositoryRelease
+		releases, err = c.github.ListReleases()
+		if err == nil {
+			// foundRelease = releases[0]
+			var cur_rel *github.RepositoryRelease
+			var cur_match string
+			cur_rel = nil
+			cur_match = ""
+			re := regexp.MustCompile(request.Version.Regexp)
+			for _, rel := range releases {
+				match := re.FindString(*rel.TagName)
+				version_greater := versionGreater(match, cur_match)
+				if version_greater {
+					cur_rel = rel
+					cur_match = match
+				}
+			}
+			foundRelease = cur_rel
+		}
+
 	} else {
 		id, _ := strconv.Atoi(request.Version.ID)
 		foundRelease, err = c.github.GetRelease(id)
@@ -181,4 +205,16 @@ func (c *InCommand) downloadFile(url, destPath string) error {
 	}
 
 	return nil
+}
+
+func versionGreater(greater string, lesser string) bool {
+	if lesser == "" {
+		return true;
+	}
+	if greater == "" {
+		return false;
+	}
+	greater_v := version.MustNewVersionFromString(greater)
+	lesser_v := version.MustNewVersionFromString(lesser)
+	return greater_v.IsGt(lesser_v)
 }
